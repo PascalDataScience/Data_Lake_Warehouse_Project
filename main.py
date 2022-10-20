@@ -22,3 +22,4 @@ if __name__ == '__main__':
     df = client.query_generation(country_code, start=start, end=end)
     df2 = client.query_generation_forecast(country_code, start=start, end=end)
 
+# "HalloIbims"

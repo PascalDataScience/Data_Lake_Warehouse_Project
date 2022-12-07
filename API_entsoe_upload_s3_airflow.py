@@ -175,8 +175,11 @@ def load_entsoe_to_parquet():
         if isinstance(df, pd.Series):
             df = df.to_frame()
             df.columns = [keys]
-        df.columns = df.columns.str.replace(r"[][()\n\t= ]", "_", regex=True)
+        
+        #call function to clean df
+        df= clean_df(df)
         print(df)
+        
         if not os.path.exists(os.path.join(basepath, r"data/"+keys+r"/")):
             # Create a new directory because it does not exist
             os.makedirs(os.path.join(basepath, r"data/"+keys+r"/"))
@@ -214,6 +217,13 @@ def upload_parquet_to_s3(**kwargs):
         )
     logging.info("scucessful upload of parquet files to s3 bucket")
 
+def clean_df(df):
+    """
+    This function cleans the df retrieved from ENTSOE
+    """
+    df = df.drop_duplicates()
+    df.columns = df.columns.str.replace(r"[][()\n\t= ]", "_", regex=True)
+    return df
 
 def start():
     logging.info('Starting the DAG')

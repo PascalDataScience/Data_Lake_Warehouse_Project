@@ -6,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 from sklearn import linear_model
+import os
 
 def mape(actual, pred):
     """
@@ -43,7 +44,9 @@ def df_to_pq(df,filepath):
 
 
 if __name__ == "__main__":
-    lst_filenames = glob.glob(r"C:\Users\pascs\OneDrive\Desktop\project_dwh\data_dwh\data\*\*.parquet")
+    #Where your files are stored in subfolders
+    basepath = "your path"
+    lst_filenames = glob.glob(basepath+'\*\*.parquet")
 
     df_all = pd.DataFrame()
     #---------------------------------------------------------------------------

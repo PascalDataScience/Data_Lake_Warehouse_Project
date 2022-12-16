@@ -13,7 +13,6 @@ aws_secret_access_key = os.environ.get('SECRET_ACCESS_KEY')
 aws_session_token = os.environ.get('SESSION_TOKEN')
 AWS_STORAGE_BUCKET_NAME = 'entsoebucket4'
 
-
 def lambda_handler(event, context):
     return {
         'statusCode': 200,

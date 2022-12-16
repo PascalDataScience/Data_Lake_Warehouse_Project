@@ -1,96 +1,92 @@
-
-# https://github.com/meteomatics/python-connector-api
-
-import numpy
-import pandas
-import requests
-
-import datetime as dt
+import boto3
+import datetime
+import json
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import meteomatics.api as api
-
 import os
-
-
 
 user = os.environ.get('USERNAME_API')
 pwd = os.environ.get('PASSWORD_API')
+aws_access_key_id = os.environ.get('ACCESS_KEY_ID')
+aws_secret_access_key = os.environ.get('SECRET_ACCESS_KEY')
+aws_session_token = os.environ.get('SESSION_TOKEN')
+AWS_STORAGE_BUCKET_NAME = 'entsoebucket4'
 
-# print(user)
-# print(pwd)
 
-def time_series_example(username: str, password: str):
-    startdate_ts = dt.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    enddate_ts = startdate_ts + dt.timedelta(days=1)
-    interval_ts = dt.timedelta(hours=1)
-    coordinates_ts = [(47.249297, 9.342854), (50., 10.)]
-    parameters_ts = ['t_2m:C', 'rr_1h:mm']
+def lambda_handler(event, context):
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Hello from Lambda!')
+    }
+
+def analysis(df_ts):
+    mpl.rcParams['figure.dpi'] = 300
+    plt.style.use('ggplot')
+    df_index = df_ts.reset_index()
+    fig, ax = plt.subplots()
+    ax.set_title('Temperature in the last 365 days')
+    ax.set_ylabel('Temperature [°C]')
+    ax.set_xlabel('Date')
+    ax.plot(df_index['validdate'], df_index['temp'], label='Temp')
+    ax.legend()
+    plt.show()
+
+def saveS3(df_ts):
+    # print(df_ts)
+    df_ts.to_csv('/tmp/test.csv')  # saving dataframe to csv file
+    s3 = boto3.client('s3',
+                      aws_access_key_id=aws_access_key_id,
+                      aws_secret_access_key=aws_secret_access_key,
+                      aws_session_token=aws_session_token)
+    with open("/tmp/test.csv", "rb") as f:
+        s3.upload_fileobj(f, AWS_STORAGE_BUCKET_NAME,
+                          f"weather_data/temperature4_{datetime.datetime.now().date().strftime('%y%m%d')}.csv")
+
+
+def renameCol(df_ts):
+    df_new = df_ts.rename(columns={'t_2m:C': 'temp'})
+    return df_new
+
+
+def timestamp():
+    now = datetime.datetime(datetime.datetime.now().year,
+                            datetime.datetime.now().month,
+                            datetime.datetime.now().day,
+                            14, 0, 0)
+    start = now - datetime.timedelta(days=365)
+    return start, now
+
+
+def time_series_example(username: str, password: str, run_analysis:bool):
+    start, end = timestamp()
+    interval_ts = datetime.timedelta(hours=1)
+    coordinates_ts = [(47.377275, 8.539653)]
+    parameters_ts = ['t_2m:C']  # list of parameters https://www.meteomatics.com/en/api/available-parameters/
     model = 'mix'
     ens_select = None  # e.g. 'median'
-    cluster_select = None  # e.g. "cluster:1", see http://api.meteomatics.com/API-Request.html#cluster-selection
+    cluster_select = None  # e.g. "cluster:1", see https://www.meteomatics.com/en/api/available-parameters/alphabetic-list/
     interp_select = 'gradient_interpolation'
-
-    # _logger.info("\ntime series:")
-
-    print(123)
     try:
-        df_ts = api.query_time_series(coordinates_ts, startdate_ts, enddate_ts, interval_ts, parameters_ts,
+        df_ts = api.query_time_series(coordinates_ts, start, end, interval_ts, parameters_ts,
                                       username, password, model, ens_select, interp_select,
                                       cluster_select=cluster_select)
-        print(df_ts)
+        df_ts = renameCol(df_ts)
+        if run_analysis:
+            analysis(df_ts)
 
-        # _logger.info("Dataframe head \n" + df_ts.head().to_string())
+        try:
+            saveS3(df_ts)
+        except Exception as e:
+            print(e)
+
     except Exception as e:
         print(e)
-        # _logger.info("Failed, the exception is {}".format(e))
-        return False
-    return True
-
-def grid_example(username: str, password: str):
-    lat_N = 50
-    lon_W = -15
-    lat_S = 20
-    lon_E = 10
-    res_lat = 3
-    res_lon = 3
-    startdate_grid = dt.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    parameter_grid = 'evapotranspiration_1h:mm'  # 't_2m:C'
-
-    # _logger.info("\ngrid:")
-
-    try:
-        df_grid = api.query_grid(startdate_grid, parameter_grid, lat_N, lon_W, lat_S, lon_E, res_lat, res_lon,
-                                 username, password)
-        print(df_grid)
-        # _logger.info("Dataframe head \n" + df_grid.head().to_string())
-    except Exception as e:
-        # _logger.error("Failed, the exception is {}".format(e))
-        return False
-    return True
-
-def grid_png_example(username: str, password: str):
-    lat_N = 50
-    lon_W = -15
-    lat_S = 20
-    lon_E = 10
-    res_lat = 3
-    res_lon = 3
-    filename_png = "grid_target.png"
-    startdate_png = dt.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    parameter_png = 't_2m:C'
-
-    # _logger.info("\ngrid as a png:")
-    try:
-        api.query_grid_png(filename_png, startdate_png, parameter_png, lat_N, lon_W, lat_S, lon_E, res_lat, res_lon,
-                           username, password)
-        # _logger.info("filename = {}".format(filename_png))
-    except Exception as e:
-        # _logger.error("Failed, the exception is {}".format(e))
         return False
     return True
 
 
 if __name__ == "__main__":
-    # run_example(time_series_example)
-    time_series_example(user, pwd)
-    # grid_example(user, pwd)
-    # grid_png_example(user, pwd)
+    run_analysis = True # set to True to see a timeseries of the temperature
+    time_series_example(user, pwd, run_analysis)
+

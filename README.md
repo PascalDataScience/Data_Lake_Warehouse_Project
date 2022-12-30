@@ -1,9 +1,9 @@
 # Team Pandas - Data Warehouse and Data Lake Systems
 
 Authors: \
-&emsp;&emsp;&emsp; Andrin Tschan \
-&emsp;&emsp;&emsp; Giancarlo Meccariello \
-&emsp;&emsp;&emsp; Pascal Schoch
+&emsp; Andrin Tschan \
+&emsp; Giancarlo Meccariello \
+&emsp; Pascal Schoch
 
 
 ## General information
